@@ -4,10 +4,10 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{D198C714-460D-470B-955D-8783186B1444}</ProjectGuid>
+    <ProjectGuid>{233EEEC5-6B89-47AB-B582-6EA4AE04194E}</ProjectGuid>
     <OutputType>WinExe</OutputType>
-    <RootNamespace>PreviousLives</RootNamespace>
-    <AssemblyName>PreviousLives</AssemblyName>
+    <RootNamespace>PreviousLives.Data</RootNamespace>
+    <AssemblyName>PreviousLives.Data</AssemblyName>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
@@ -54,9 +54,6 @@
     </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <EmbeddedResource Include="Form1.resx">
-      <DependentUpon>Form1.cs</DependentUpon>
-    </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
