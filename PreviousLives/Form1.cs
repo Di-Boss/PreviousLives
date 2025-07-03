@@ -15,6 +15,9 @@ namespace PreviousLives
         public Form1()
         {
             InitializeComponent();
+            this.BackColor = ColorTranslator.FromHtml("#121212");
+
+
         }
 
         private void Form1_Load(object sender, EventArgs e)
