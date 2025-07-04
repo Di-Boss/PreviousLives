@@ -1,10 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace PreviousLives
+namespace PreviousLives.UI
 {
     internal static class Program
     {
@@ -14,8 +11,12 @@ namespace PreviousLives
         [STAThread]
         static void Main()
         {
+            // Enable visual styles and text rendering
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
+
+            // Run your custom form (make sure MainForm inherits from Form
+            // and contains all your SetupUI() logic, no InitializeComponent())
             Application.Run(new Form1());
         }
     }

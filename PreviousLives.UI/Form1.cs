@@ -1,11 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
 using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace PreviousLives
@@ -15,59 +9,63 @@ namespace PreviousLives
         public Form1()
         {
             InitializeComponent();
+
+            // overall form styling
             this.BackColor = ColorTranslator.FromHtml("#121212");
 
+            // 1) Header panel
             var headerPanel = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = 80,  // match your v0 spec
-                BackColor = ColorTranslator.FromHtml("#121212"),
-                BorderStyle = BorderStyle.None
+                Height = 80,
+                BackColor = this.BackColor
             };
             this.Controls.Add(headerPanel);
 
-            // 2) Add the logo PictureBox
+            // 2) Amber square behind the logo
+            var logoContainer = new Panel
+            {
+                Size = new Size(40, 40),
+                Location = new Point(20, (headerPanel.Height - 40) / 2),
+                BackColor = ColorTranslator.FromHtml("#FFB347")
+            };
+            headerPanel.Controls.Add(logoContainer);
+
+            // 3) Hourglass icon centered in that square
             var picLogo = new PictureBox
             {
                 SizeMode = PictureBoxSizeMode.Zoom,
+                Size = new Size(32, 32),
+                Location = new Point((logoContainer.Width - 32) / 2,
+                                      (logoContainer.Height - 32) / 2),
                 BackColor = Color.Transparent,
-                Image = Properties.Resources.hourglasslogo  // your resource name
+                Image = Properties.Resources.hourglasslogo
             };
+            logoContainer.Controls.Add(picLogo);
 
-            // Now set Size and Location in normal statements:
-            // After creating picLogo and before adding to headerPanel:
-            picLogo.Size = new Size(32, 32);
-            picLogo.Location = new Point(20, (headerPanel.Height - picLogo.Height) / 2);
-
-
-            // Finally add to the header panel:
-            headerPanel.Controls.Add(picLogo);
-
-            // 4) Add the title label
+            // 4) Title label
             var titleLabel = new Label
             {
                 Text = "Previous Lives",
-                Font = new Font("Segoe UI", 18F, FontStyle.Bold),
+                UseCompatibleTextRendering = true,
+                Font = new Font("Segoe UI Semibold", 18F, FontStyle.Regular),
                 ForeColor = Color.White,
                 AutoSize = true,
                 BackColor = Color.Transparent
             };
+            titleLabel.Paint += (s, e) =>
+                e.Graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
 
-            // position it 10px to the right of the logo
             titleLabel.Location = new Point(
-                picLogo.Right + 10,
+                logoContainer.Right + 10,
                 (headerPanel.Height - titleLabel.PreferredHeight) / 2
             );
-
             headerPanel.Controls.Add(titleLabel);
-
-
-
         }
 
         private void Form1_Load(object sender, EventArgs e)
         {
-
+            // any runtime initialization
         }
     }
 }
