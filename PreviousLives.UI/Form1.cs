@@ -7,6 +7,7 @@ namespace PreviousLives
     public partial class Form1 : Form
     {
         private Panel _headerPanel;
+        private Panel _divider;        // ← divider line
         private Button _storiesButton;
         private LinkLabel _captureLink, _rememberLink, _discoverLink;
         private Label _titleLabel;
@@ -66,7 +67,7 @@ namespace PreviousLives
                 e.Graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
             _headerPanel.Controls.Add(_titleLabel);
 
-            // 5) Right‐group: STORIES pill
+            // 5) Right-group: STORIES pill
             _storiesButton = new Button
             {
                 Text = "STORIES (0)",
@@ -84,7 +85,7 @@ namespace PreviousLives
             _storiesButton.Click += (s, e) => MessageBox.Show("Stories clicked (stub)");
             _headerPanel.Controls.Add(_storiesButton);
 
-            // 6) Right‐group: navigation links
+            // 6) Right-group: navigation links
             _captureLink = CreateNavLink("CAPTURE");
             _rememberLink = CreateNavLink("REMEMBER");
             _discoverLink = CreateNavLink("DISCOVER");
@@ -93,7 +94,16 @@ namespace PreviousLives
                 _captureLink, _rememberLink, _discoverLink
             });
 
-            // 7) Initial layout + on‐resize handler
+            // 7) Divider line
+            _divider = new Panel
+            {
+                Height = 1,
+                Dock = DockStyle.Bottom,
+                BackColor = ColorTranslator.FromHtml("#333333")
+            };
+            _headerPanel.Controls.Add(_divider);
+
+            // 8) Initial layout + resize handler
             LayoutHeader();
             _headerPanel.SizeChanged += (s, e) => LayoutHeader();
         }
@@ -102,15 +112,15 @@ namespace PreviousLives
         {
             const int gap = 40;
 
-            // Left group: logoContainer is at Padding.Left, titleLabel follows it
+            // Left group: logoContainer at Padding.Left, then title
             _titleLabel.Location = new Point(
                 _headerPanel.Padding.Left + 40 + 10,
                 (_headerPanel.Height - _titleLabel.PreferredHeight) / 2
             );
 
-            // Right group anchored to the right edge:
+            // Right-group anchored to the right edge:
             int rightX = _headerPanel.ClientSize.Width - _headerPanel.Padding.Right;
-            int centerY = (_headerPanel.Height) / 2;
+            int centerY = _headerPanel.Height / 2;
 
             // place DISCOVER
             _discoverLink.Location = new Point(
