@@ -23,7 +23,6 @@ namespace PreviousLives
         public Form1()
         {
             InitializeComponent();
-
             BuildHeader();
             BuildWebcamPreview();
             InitializeWebcam();
@@ -158,23 +157,36 @@ namespace PreviousLives
 
         private void BuildWebcamPreview()
         {
+            // container with orange border
+            var previewContainer = new Panel
+            {
+                BackColor = ColorTranslator.FromHtml("#FFB347"),
+                Padding = new Padding(2) // 2px orange border
+            };
+            Controls.Add(previewContainer);
+
+            // actual PictureBox
             _pbPreview = new PictureBox
             {
+                Dock = DockStyle.Fill,
                 SizeMode = PictureBoxSizeMode.StretchImage,
                 BackColor = Color.Black
             };
-            Controls.Add(_pbPreview);
+            previewContainer.Controls.Add(_pbPreview);
 
+            // Capture button semibold + white outline
             _btnCapture = new Button
             {
-                Text = "Capture",
+                Text = "CAPTURE",
+                Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
                 FlatStyle = FlatStyle.Flat,
+                AutoSize = false,
                 BackColor = ColorTranslator.FromHtml("#FFB347"),
-                ForeColor = Color.Black,
-                AutoSize = true,
+                ForeColor = Color.White,
                 Cursor = Cursors.Hand
             };
-            _btnCapture.FlatAppearance.BorderSize = 0;
+            _btnCapture.FlatAppearance.BorderSize = 2;
+            _btnCapture.FlatAppearance.BorderColor = Color.White; // pure white
             _btnCapture.Click += (s, e) =>
             {
                 if (_pbPreview.Image != null)
@@ -185,32 +197,38 @@ namespace PreviousLives
             this.Shown += (s, e) =>
             {
                 const int sideMargin = 40;
-                const int topSpacing = 30;  // ← was 10, now 30 for more room  
+                const int topSpacing = 30;
                 const int footerSpace = 80;
-                const int bottomMargin = sideMargin + footerSpace;
+                int bottomMargin = sideMargin + footerSpace;
 
                 int topY = _headerPanel.Bottom + topSpacing;
                 int availH = ClientSize.Height - bottomMargin - topY - topSpacing;
+                int availW = ClientSize.Width - sideMargin * 2;
 
-                int previewW = ClientSize.Width - sideMargin * 2;
-                int previewH = previewW * 9 / 16;
-                if (previewH > availH)
+                // calculate 16:9 fit
+                int pbW = availW;
+                int pbH = pbW * 9 / 16;
+                if (pbH > availH)
                 {
-                    previewH = availH;
-                    previewW = previewH * 16 / 9;
+                    pbH = availH;
+                    pbW = pbH * 16 / 9;
                 }
 
-                _pbPreview.SetBounds(
-                    (ClientSize.Width - previewW) / 2,
+                // position container
+                previewContainer.SetBounds(
+                    (ClientSize.Width - pbW) / 2,
                     topY,
-                    previewW,
-                    previewH
+                    pbW,
+                    pbH
                 );
-                _pbPreview.BringToFront();
+                previewContainer.BringToFront();
 
+                // size & place capture button
+                var storySize = _storiesButton.PreferredSize;
+                _btnCapture.Size = new Size(storySize.Width, storySize.Height);
                 _btnCapture.Location = new Point(
                     (ClientSize.Width - _btnCapture.Width) / 2,
-                    _pbPreview.Bottom + topSpacing
+                    previewContainer.Bottom + topSpacing
                 );
                 _btnCapture.BringToFront();
             };
