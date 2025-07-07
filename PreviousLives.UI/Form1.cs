@@ -9,10 +9,15 @@ namespace PreviousLives
     public partial class Form1 : Form
     {
         // --- Header controls ---
-        private Panel _headerPanel, _divider;
+        private Panel _headerPanel, _headerDivider;
         private Button _storiesButton;
         private LinkLabel _captureLink, _rememberLink, _discoverLink;
         private Label _titleLabel;
+
+        // --- Footer controls ---
+        private Panel _footerPanel, _footerDivider;
+        private LinkLabel _footerLeftFacebook, _footerLeftYouTube, _footerLeftInstagram;
+        private Label _footerCenterLabel, _footerRightLabel;
 
         // --- Webcam preview ---
         private FilterInfoCollection _videoDevices;
@@ -25,6 +30,7 @@ namespace PreviousLives
             InitializeComponent();
             BuildHeader();
             BuildWebcamPreview();
+            BuildFooter();
             InitializeWebcam();
         }
 
@@ -41,7 +47,7 @@ namespace PreviousLives
             };
             Controls.Add(_headerPanel);
 
-            // Logo square
+            // Logo
             var logo = new Panel
             {
                 Size = new Size(40, 40),
@@ -71,78 +77,35 @@ namespace PreviousLives
                 e.Graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
             _headerPanel.Controls.Add(_titleLabel);
 
-            // STORIES pill
+            // Stories pill + nav links
             _storiesButton = MakePill("STORIES (0)");
-            _headerPanel.Controls.Add(_storiesButton);
-
-            // Nav links
             _captureLink = MakeNav("CAPTURE");
             _rememberLink = MakeNav("REMEMBER");
             _discoverLink = MakeNav("DISCOVER");
-            _headerPanel.Controls.AddRange(new Control[] { _captureLink, _rememberLink, _discoverLink });
+            _headerPanel.Controls.AddRange(new Control[]
+                { _storiesButton, _captureLink, _rememberLink, _discoverLink });
 
             // Divider
-            _divider = new Panel
+            _headerDivider = new Panel
             {
                 Dock = DockStyle.Bottom,
                 Height = 1,
                 BackColor = ColorTranslator.FromHtml("#333333")
             };
-            _headerPanel.Controls.Add(_divider);
+            _headerPanel.Controls.Add(_headerDivider);
 
             LayoutHeader();
             _headerPanel.SizeChanged += (s, e) => LayoutHeader();
         }
 
-        private Button MakePill(string text)
-        {
-            var b = new Button
-            {
-                Text = text,
-                Font = new Font("Segoe UI", 9F),
-                FlatStyle = FlatStyle.Flat,
-                AutoSize = true,
-                Padding = new Padding(12, 6, 12, 6),
-                BackColor = Color.Transparent,
-                ForeColor = ColorTranslator.FromHtml("#FFB347"),
-                Cursor = Cursors.Hand,
-                Anchor = AnchorStyles.Top | AnchorStyles.Right
-            };
-            b.FlatAppearance.BorderSize = 1;
-            b.FlatAppearance.BorderColor = ColorTranslator.FromHtml("#FFB347");
-            b.Click += (s, e) => MessageBox.Show("Stories clicked");
-            return b;
-        }
-
-        private LinkLabel MakeNav(string text)
-        {
-            var l = new LinkLabel
-            {
-                Text = text,
-                LinkColor = Color.White,
-                ActiveLinkColor = ColorTranslator.FromHtml("#FFB347"),
-                LinkBehavior = LinkBehavior.HoverUnderline,
-                AutoSize = true,
-                BackColor = Color.Transparent,
-                Font = new Font("Segoe UI", 9F),
-                Cursor = Cursors.Hand,
-                Anchor = AnchorStyles.Top | AnchorStyles.Right
-            };
-            l.Click += (s, e) => MessageBox.Show($"{text} clicked");
-            return l;
-        }
-
         private void LayoutHeader()
         {
             const int gap = 40;
-
-            // Title just right of logo
             _titleLabel.Location = new Point(
-                _headerPanel.Padding.Left + 40 + 10,
+                _headerPanel.Padding.Left + 50,
                 (_headerPanel.Height - _titleLabel.PreferredHeight) / 2
             );
 
-            // Discover ← Remember ← Capture ← Stories
             int rx = _headerPanel.ClientSize.Width - _headerPanel.Padding.Right;
             int cy = _headerPanel.Height / 2;
 
@@ -155,17 +118,47 @@ namespace PreviousLives
             _storiesButton.Location = new Point(rx - _storiesButton.PreferredSize.Width, cy - _storiesButton.PreferredSize.Height / 2);
         }
 
+        private Button MakePill(string text)
+            => new Button
+            {
+                Text = text,
+                Font = new Font("Segoe UI", 9F),
+                FlatStyle = FlatStyle.Flat,
+                AutoSize = true,
+                Padding = new Padding(12, 6, 12, 6),
+                BackColor = Color.Transparent,
+                ForeColor = ColorTranslator.FromHtml("#FFB347"),
+                Cursor = Cursors.Hand,
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                FlatAppearance = {
+                    BorderSize  = 1,
+                    BorderColor = ColorTranslator.FromHtml("#FFB347")
+                }
+            };
+
+        private LinkLabel MakeNav(string text)
+            => new LinkLabel
+            {
+                Text = text,
+                LinkColor = Color.White,
+                ActiveLinkColor = ColorTranslator.FromHtml("#FFB347"),
+                LinkBehavior = LinkBehavior.HoverUnderline,
+                AutoSize = true,
+                BackColor = Color.Transparent,
+                Font = new Font("Segoe UI", 9F),
+                Cursor = Cursors.Hand,
+                Anchor = AnchorStyles.Top | AnchorStyles.Right
+            };
+
         private void BuildWebcamPreview()
         {
-            // container with orange border
             var previewContainer = new Panel
             {
                 BackColor = ColorTranslator.FromHtml("#FFB347"),
-                Padding = new Padding(2) // 2px orange border
+                Padding = new Padding(2)
             };
             Controls.Add(previewContainer);
 
-            // actual PictureBox
             _pbPreview = new PictureBox
             {
                 Dock = DockStyle.Fill,
@@ -174,7 +167,6 @@ namespace PreviousLives
             };
             previewContainer.Controls.Add(_pbPreview);
 
-            // Capture button semibold + white outline
             _btnCapture = new Button
             {
                 Text = "CAPTURE",
@@ -183,10 +175,12 @@ namespace PreviousLives
                 AutoSize = false,
                 BackColor = ColorTranslator.FromHtml("#FFB347"),
                 ForeColor = Color.White,
-                Cursor = Cursors.Hand
+                Cursor = Cursors.Hand,
+                FlatAppearance = {
+                    BorderSize  = 2,
+                    BorderColor = Color.White
+                }
             };
-            _btnCapture.FlatAppearance.BorderSize = 2;
-            _btnCapture.FlatAppearance.BorderColor = Color.White; // pure white
             _btnCapture.Click += (s, e) =>
             {
                 if (_pbPreview.Image != null)
@@ -194,45 +188,117 @@ namespace PreviousLives
             };
             Controls.Add(_btnCapture);
 
-            this.Shown += (s, e) =>
+            Shown += (s, e) =>
             {
-                const int sideMargin = 40;
-                const int topSpacing = 30;
-                const int footerSpace = 80;
-                int bottomMargin = sideMargin + footerSpace;
-
-                int topY = _headerPanel.Bottom + topSpacing;
-                int availH = ClientSize.Height - bottomMargin - topY - topSpacing;
-                int availW = ClientSize.Width - sideMargin * 2;
-
-                // calculate 16:9 fit
-                int pbW = availW;
-                int pbH = pbW * 9 / 16;
-                if (pbH > availH)
-                {
-                    pbH = availH;
-                    pbW = pbH * 16 / 9;
-                }
-
-                // position container
-                previewContainer.SetBounds(
-                    (ClientSize.Width - pbW) / 2,
-                    topY,
-                    pbW,
-                    pbH
-                );
+                const int side = 40, topSp = 30, footSp = 80;
+                int bottomM = side + footSp;
+                int topY = _headerPanel.Bottom + topSp;
+                int availH = ClientSize.Height - bottomM - topY - topSp;
+                int availW = ClientSize.Width - side * 2;
+                int w = availW, h = w * 9 / 16;
+                if (h > availH) { h = availH; w = h * 16 / 9; }
+                previewContainer.SetBounds((ClientSize.Width - w) / 2, topY, w, h);
                 previewContainer.BringToFront();
 
-                // size & place capture button
-                var storySize = _storiesButton.PreferredSize;
-                _btnCapture.Size = new Size(storySize.Width, storySize.Height);
-                _btnCapture.Location = new Point(
-                    (ClientSize.Width - _btnCapture.Width) / 2,
-                    previewContainer.Bottom + topSpacing
-                );
+                var sz = _storiesButton.PreferredSize;
+                _btnCapture.Size = sz;
+                _btnCapture.Location = new Point((ClientSize.Width - sz.Width) / 2, previewContainer.Bottom + topSp);
                 _btnCapture.BringToFront();
             };
         }
+
+        private void BuildFooter()
+        {
+            _footerPanel = new Panel
+            {
+                Dock = DockStyle.Bottom,
+                Height = 80,
+                Padding = new Padding(20, 0, 20, 0),
+                BackColor = BackColor
+            };
+            Controls.Add(_footerPanel);
+
+            // divider
+            _footerDivider = new Panel
+            {
+                Height = 1,
+                BackColor = ColorTranslator.FromHtml("#333333")
+            };
+            _footerPanel.Controls.Add(_footerDivider);
+
+            // left social links
+            _footerLeftFacebook = MakeFooterLink("Facebook");
+            _footerLeftYouTube = MakeFooterLink("YouTube");
+            _footerLeftInstagram = MakeFooterLink("Instagram");
+            _footerPanel.Controls.AddRange(new Control[]
+            {
+                _footerLeftFacebook,
+                _footerLeftYouTube,
+                _footerLeftInstagram
+            });
+
+            // center & right labels
+            _footerCenterLabel = new Label
+            {
+                Text = "© PreviousLives",
+                Font = new Font("Segoe UI", 9F),
+                ForeColor = Color.White,
+                AutoSize = true,
+                BackColor = Color.Transparent
+            };
+            _footerRightLabel = new Label
+            {
+                Text = "Powered by M.T.",
+                Font = new Font("Segoe UI", 9F),
+                ForeColor = Color.White,
+                AutoSize = true,
+                BackColor = Color.Transparent
+            };
+            _footerPanel.Controls.AddRange(new Control[]
+            {
+                _footerCenterLabel,
+                _footerRightLabel
+            });
+
+            void LayoutFooter()
+            {
+                // divider at 40px
+                _footerDivider.SetBounds(0, 40, _footerPanel.ClientSize.Width, 1);
+                int y = 40 + (40 - _footerCenterLabel.PreferredHeight) / 2;
+
+                // left links spaced 20px
+                _footerLeftFacebook.Location = new Point(_footerPanel.Padding.Left, y);
+                _footerLeftYouTube.Location = new Point(_footerLeftFacebook.Right + 20, y);
+                _footerLeftInstagram.Location = new Point(_footerLeftYouTube.Right + 20, y);
+
+                // center
+                _footerCenterLabel.Location = new Point(
+                    (_footerPanel.ClientSize.Width - _footerCenterLabel.PreferredWidth) / 2,
+                    y
+                );
+                // right
+                _footerRightLabel.Location = new Point(
+                    _footerPanel.ClientSize.Width - _footerRightLabel.PreferredWidth - _footerPanel.Padding.Right,
+                    y
+                );
+            }
+
+            _footerPanel.SizeChanged += (s, e) => LayoutFooter();
+            LayoutFooter();
+        }
+
+        private LinkLabel MakeFooterLink(string text)
+            => new LinkLabel
+            {
+                Text = text,
+                LinkColor = Color.White,
+                ActiveLinkColor = ColorTranslator.FromHtml("#FFB347"),
+                LinkBehavior = LinkBehavior.HoverUnderline,
+                AutoSize = true,
+                BackColor = Color.Transparent,
+                Font = new Font("Segoe UI", 9F),
+                Cursor = Cursors.Hand
+            };
 
         private void InitializeWebcam()
         {
