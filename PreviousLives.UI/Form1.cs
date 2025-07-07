@@ -1,8 +1,11 @@
-﻿using System;
-using System.Drawing;
-using System.Windows.Forms;
-using AForge.Video;
+﻿using AForge.Video;
 using AForge.Video.DirectShow;
+using Microsoft.Data.Sqlite;
+using PreviousLives.Data;
+using System;
+using System.Drawing;
+using System.IO;
+using System.Windows.Forms;
 
 namespace PreviousLives
 {
@@ -25,15 +28,36 @@ namespace PreviousLives
         private PictureBox _pbPreview;
         private Button _btnCapture;
 
+        // your SQLite connection string (points to a .db file)
+        private readonly string _connectionString;
+        private void Form1_Load(object sender, EventArgs e)
+        {
+            // no-op
+        }
+        public Form1(string connectionString)
+            : this()
+        {
+            _connectionString = connectionString;
+        }
+
+        // parameterless ctor does UI setup
         public Form1()
         {
             InitializeComponent();
             BuildHeader();
             BuildWebcamPreview();
             BuildFooter();
+        }
+
+        protected override void OnLoad(EventArgs e)
+        {
+            base.OnLoad(e);
+
+            // **DB is already initialized in Program.Main**, so just start webcam:
             InitializeWebcam();
         }
 
+        // --- HEADER ---
         private void BuildHeader()
         {
             BackColor = ColorTranslator.FromHtml("#121212");
@@ -73,17 +97,19 @@ namespace PreviousLives
                 AutoSize = true,
                 BackColor = Color.Transparent
             };
-            _titleLabel.Paint += (s, e) =>
-                e.Graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+            _titleLabel.Paint += (s, ea) =>
+                ea.Graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
             _headerPanel.Controls.Add(_titleLabel);
 
-            // Stories pill + nav links
+            // Nav buttons
             _storiesButton = MakePill("STORIES (0)");
             _captureLink = MakeNav("CAPTURE");
             _rememberLink = MakeNav("REMEMBER");
             _discoverLink = MakeNav("DISCOVER");
             _headerPanel.Controls.AddRange(new Control[]
-                { _storiesButton, _captureLink, _rememberLink, _discoverLink });
+            {
+                _storiesButton, _captureLink, _rememberLink, _discoverLink
+            });
 
             // Divider
             _headerDivider = new Panel
@@ -95,7 +121,7 @@ namespace PreviousLives
             _headerPanel.Controls.Add(_headerDivider);
 
             LayoutHeader();
-            _headerPanel.SizeChanged += (s, e) => LayoutHeader();
+            _headerPanel.SizeChanged += (s, ev) => LayoutHeader();
         }
 
         private void LayoutHeader()
@@ -130,7 +156,8 @@ namespace PreviousLives
                 ForeColor = ColorTranslator.FromHtml("#FFB347"),
                 Cursor = Cursors.Hand,
                 Anchor = AnchorStyles.Top | AnchorStyles.Right,
-                FlatAppearance = {
+                FlatAppearance =
+                {
                     BorderSize  = 1,
                     BorderColor = ColorTranslator.FromHtml("#FFB347")
                 }
@@ -150,6 +177,7 @@ namespace PreviousLives
                 Anchor = AnchorStyles.Top | AnchorStyles.Right
             };
 
+        // --- WEBCAM PREVIEW & CAPTURE ---
         private void BuildWebcamPreview()
         {
             var previewContainer = new Panel
@@ -172,23 +200,19 @@ namespace PreviousLives
                 Text = "CAPTURE",
                 Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
                 FlatStyle = FlatStyle.Flat,
-                AutoSize = false,
                 BackColor = ColorTranslator.FromHtml("#FFB347"),
                 ForeColor = Color.White,
                 Cursor = Cursors.Hand,
-                FlatAppearance = {
+                FlatAppearance =
+                {
                     BorderSize  = 2,
                     BorderColor = Color.White
                 }
             };
-            _btnCapture.Click += (s, e) =>
-            {
-                if (_pbPreview.Image != null)
-                    MessageBox.Show("Captured!");
-            };
+            _btnCapture.Click += CaptureAndSave;
             Controls.Add(_btnCapture);
 
-            Shown += (s, e) =>
+            Shown += (s, ev) =>
             {
                 const int side = 40, topSp = 30, footSp = 80;
                 int bottomM = side + footSp;
@@ -197,6 +221,7 @@ namespace PreviousLives
                 int availW = ClientSize.Width - side * 2;
                 int w = availW, h = w * 9 / 16;
                 if (h > availH) { h = availH; w = h * 16 / 9; }
+
                 previewContainer.SetBounds((ClientSize.Width - w) / 2, topY, w, h);
                 previewContainer.BringToFront();
 
@@ -207,6 +232,33 @@ namespace PreviousLives
             };
         }
 
+        private void CaptureAndSave(object sender, EventArgs e)
+        {
+            if (_pbPreview.Image == null) return;
+
+            // serialize to PNG
+            byte[] blob;
+            using (var ms = new MemoryStream())
+            {
+                _pbPreview.Image.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
+                blob = ms.ToArray();
+            }
+
+            // insert into SQLite
+            using var conn = new SqliteConnection(_connectionString);
+            conn.Open();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"
+                INSERT INTO Captures (Timestamp, ImageData)
+                VALUES ($ts, $img)";
+            cmd.Parameters.AddWithValue("$ts", DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+            cmd.Parameters.Add("$img", SqliteType.Blob).Value = blob;
+            cmd.ExecuteNonQuery();
+
+            MessageBox.Show("Captured & saved!");
+        }
+
+        // --- FOOTER ---
         private void BuildFooter()
         {
             _footerPanel = new Panel
@@ -218,7 +270,6 @@ namespace PreviousLives
             };
             Controls.Add(_footerPanel);
 
-            // divider
             _footerDivider = new Panel
             {
                 Height = 1,
@@ -226,7 +277,6 @@ namespace PreviousLives
             };
             _footerPanel.Controls.Add(_footerDivider);
 
-            // left social links
             _footerLeftFacebook = MakeFooterLink("Facebook");
             _footerLeftYouTube = MakeFooterLink("YouTube");
             _footerLeftInstagram = MakeFooterLink("Instagram");
@@ -237,7 +287,6 @@ namespace PreviousLives
                 _footerLeftInstagram
             });
 
-            // center & right labels
             _footerCenterLabel = new Label
             {
                 Text = "© PreviousLives",
@@ -262,28 +311,22 @@ namespace PreviousLives
 
             void LayoutFooter()
             {
-                // divider at 40px
                 _footerDivider.SetBounds(0, 40, _footerPanel.ClientSize.Width, 1);
-                int y = 40 + (40 - _footerCenterLabel.PreferredHeight) / 2;
+                var y = 40 + (40 - _footerCenterLabel.PreferredHeight) / 2;
 
-                // left links spaced 20px
                 _footerLeftFacebook.Location = new Point(_footerPanel.Padding.Left, y);
                 _footerLeftYouTube.Location = new Point(_footerLeftFacebook.Right + 20, y);
                 _footerLeftInstagram.Location = new Point(_footerLeftYouTube.Right + 20, y);
 
-                // center
                 _footerCenterLabel.Location = new Point(
-                    (_footerPanel.ClientSize.Width - _footerCenterLabel.PreferredWidth) / 2,
-                    y
+                    (_footerPanel.ClientSize.Width - _footerCenterLabel.PreferredWidth) / 2, y
                 );
-                // right
                 _footerRightLabel.Location = new Point(
-                    _footerPanel.ClientSize.Width - _footerRightLabel.PreferredWidth - _footerPanel.Padding.Right,
-                    y
+                    _footerPanel.ClientSize.Width - _footerRightLabel.PreferredWidth - _footerPanel.Padding.Right, y
                 );
             }
 
-            _footerPanel.SizeChanged += (s, e) => LayoutFooter();
+            _footerPanel.SizeChanged += (s, ev) => LayoutFooter();
             LayoutFooter();
         }
 
@@ -300,6 +343,7 @@ namespace PreviousLives
                 Cursor = Cursors.Hand
             };
 
+        // --- WEBCAM INITIALIZATION ---
         private void InitializeWebcam()
         {
             _videoDevices = new FilterInfoCollection(FilterCategory.VideoInputDevice);
@@ -309,9 +353,9 @@ namespace PreviousLives
                 return;
             }
             _webcam = new VideoCaptureDevice(_videoDevices[0].MonikerString);
-            _webcam.NewFrame += (s, e) =>
+            _webcam.NewFrame += (s, ea) =>
             {
-                var bmp = (Bitmap)e.Frame.Clone();
+                var bmp = (Bitmap)ea.Frame.Clone();
                 _pbPreview?.Invoke(new Action(() =>
                 {
                     _pbPreview.Image?.Dispose();
