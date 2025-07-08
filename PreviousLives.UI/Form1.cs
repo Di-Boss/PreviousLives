@@ -101,7 +101,7 @@ namespace PreviousLives
             _captureLink = MakeNav("CAPTURE");
             _rememberLink = MakeNav("REMEMBER");
             _discoverLink = MakeNav("DISCOVER");
-            _headerPanel.Controls.AddRange(new Control[]{
+            _headerPanel.Controls.AddRange(new Control[] {
                 _storiesButton, _captureLink, _rememberLink, _discoverLink
             });
 
@@ -204,7 +204,8 @@ namespace PreviousLives
             _btnCapture.Click += CaptureAndSave;
             Controls.Add(_btnCapture);
 
-            Shown += (s, ev) => {
+            Shown += (s, ev) =>
+            {
                 const int side = 40, topSp = 30, footSp = 80;
                 int bottomM = side + footSp;
                 int topY = _headerPanel.Bottom + topSp;
@@ -229,9 +230,11 @@ namespace PreviousLives
 
             // 1) serialize to PNG
             byte[] blob;
-            using var ms = new MemoryStream();
-            _pbPreview.Image.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
-            blob = ms.ToArray();
+            using (var ms = new MemoryStream())
+            {
+                _pbPreview.Image.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
+                blob = ms.ToArray();
+            }
 
             // 2) generate description text
             var now = DateTimeOffset.UtcNow;
@@ -256,7 +259,11 @@ namespace PreviousLives
                 newId = (long)lastIdCmd.ExecuteScalar();
             }
 
-            MessageBox.Show($"Captured & saved!  ID = {newId}");
+            // 4) open Form2 to display what you just saved
+            var viewer = new Form2(_connectionString, newId);
+            viewer.Show();
+            this.Hide();
+
         }
 
         // --- FOOTER ---
@@ -278,7 +285,6 @@ namespace PreviousLives
             };
             _footerPanel.Controls.Add(_footerDivider);
 
-            // now use MakeFooterLink so they’re LinkLabels, not Buttons:
             _footerLeftFacebook = MakeFooterLink("Facebook");
             _footerLeftYouTube = MakeFooterLink("YouTube");
             _footerLeftInstagram = MakeFooterLink("Instagram");
