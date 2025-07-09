@@ -75,6 +75,11 @@ namespace PreviousLives
             _tbDescription.Text = reader.GetString(reader.GetOrdinal("Description"));
         }
 
+        private void Form2_Load_1(object sender, EventArgs e)
+        {
+
+        }
+
         private void BuildHeader()
         {
             BackColor = ColorTranslator.FromHtml("#121212");
@@ -211,9 +216,9 @@ namespace PreviousLives
                 ReadOnly = true,
                 ScrollBars = ScrollBars.None,
                 TextAlign = HorizontalAlignment.Center,
-                Font = new Font("Segoe UI", 10F),
+                Font = new Font("Segoe UI", 8F),
                 Dock = DockStyle.Bottom,
-                Height = 100,
+                Height = 120,
                 BorderStyle = BorderStyle.None,
                 BackColor = BackColor,
                 ForeColor = Color.White
