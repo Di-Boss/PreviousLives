@@ -1,4 +1,4 @@
-﻿// PreviousLives.Data/Database.cs
+// PreviousLives.Data/Database.cs
 using System;
 using System.IO;
 using Microsoft.Data.Sqlite;
@@ -34,48 +34,65 @@ namespace PreviousLives.Data
             {
                 conn.Open();
 
-                // A) Create table if missing (includes Description)
+                // A) Create table if missing (includes Description & EditedImage)
                 using (var cmd = conn.CreateCommand())
                 {
                     cmd.CommandText = @"
                         CREATE TABLE IF NOT EXISTS Captures (
-                          Id          INTEGER PRIMARY KEY AUTOINCREMENT,
-                          Timestamp   INTEGER NOT NULL,
-                          ImageData   BLOB    NOT NULL,
-                          Description TEXT    NOT NULL DEFAULT ''
+                          Id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                          Timestamp    INTEGER NOT NULL,
+                          ImageData    BLOB    NOT NULL,
+                          Description  TEXT    NOT NULL DEFAULT '',
+                          EditedImage  BLOB    NOT NULL
                         );";
                     cmd.ExecuteNonQuery();
                 }
 
-                // B) If table existed without Description, add that column
+                // B) Migrate existing table: add Description & EditedImage if missing
                 using (var cmd = conn.CreateCommand())
                 {
                     cmd.CommandText = "PRAGMA table_info(Captures);";
-                    bool hasDescription = false;
+                    bool hasDescription = false, hasEditedImage = false;
                     using (var reader = cmd.ExecuteReader())
                     {
                         while (reader.Read())
                         {
-                            // 'name' is at index 1
-                            if (reader.GetString(1).Equals("Description", StringComparison.OrdinalIgnoreCase))
-                            {
+                            var name = reader.GetString(1);
+                            if (name.Equals("Description", StringComparison.OrdinalIgnoreCase))
                                 hasDescription = true;
-                                break;
-                            }
+                            if (name.Equals("EditedImage", StringComparison.OrdinalIgnoreCase))
+                                hasEditedImage = true;
                         }
                     }
 
                     if (!hasDescription)
                     {
-                        using var alter = conn.CreateCommand();
-                        alter.CommandText = @"
+                        using var alterDesc = conn.CreateCommand();
+                        alterDesc.CommandText = @"
                             ALTER TABLE Captures
                             ADD COLUMN Description TEXT NOT NULL DEFAULT '';
                         ";
-                        alter.ExecuteNonQuery();
+                        alterDesc.ExecuteNonQuery();
+                    }
+
+                    if (!hasEditedImage)
+                    {
+                        using var alterEdit = conn.CreateCommand();
+                        alterEdit.CommandText = @"
+                            ALTER TABLE Captures
+                            ADD COLUMN EditedImage BLOB NOT NULL DEFAULT x'';
+                        ";
+                        alterEdit.ExecuteNonQuery();
                     }
                 }
             }
+
+            return connString;
+        }
+    }
+}
+
+
 
             return connString;
         }
