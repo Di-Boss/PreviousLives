@@ -1,9 +1,8 @@
-﻿using System;
+using System;
 using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
 using Microsoft.Data.Sqlite;
-using PreviousLives.Data;
 
 namespace PreviousLives
 {
@@ -17,7 +16,7 @@ namespace PreviousLives
 
         // --- Content controls ---
         private Panel _pictureFrame;
-        private PictureBox _pbCaptured;
+        private PictureBox _pbEdited;       // <-- renamed to make clear this is the edited image
         private TextBox _tbDescription;
 
         // --- Footer controls ---
@@ -50,10 +49,12 @@ namespace PreviousLives
             conn.Open();
 
             using var cmd = conn.CreateCommand();
+            // <-- pull EditedImage instead of ImageData
             cmd.CommandText = @"
-                SELECT ImageData, Description
+                SELECT EditedImage, Description
                   FROM Captures
-                 WHERE Id = $id";
+                 WHERE Id = $id
+            ";
             cmd.Parameters.AddWithValue("$id", _captureId);
 
             using var reader = cmd.ExecuteReader();
@@ -65,19 +66,14 @@ namespace PreviousLives
                 return;
             }
 
-            // load image
-            var blob = (byte[])reader["ImageData"];
+            // load the *edited* image
+            var blob = (byte[])reader["EditedImage"];
             using var ms = new MemoryStream(blob);
-            _pbCaptured.Image = Image.FromStream(ms);
+            _pbEdited.Image = Image.FromStream(ms);
 
             // load description
             _tbDescription.TextAlign = HorizontalAlignment.Center;
             _tbDescription.Text = reader.GetString(reader.GetOrdinal("Description"));
-        }
-
-        private void Form2_Load_1(object sender, EventArgs e)
-        {
-
         }
 
         private void BuildHeader()
@@ -118,12 +114,12 @@ namespace PreviousLives
                 AutoSize = true,
                 BackColor = Color.Transparent
             };
-            _titleLabel.Paint += (s, e) =>
-                e.Graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+            _titleLabel.Paint += (s, ea) =>
+                ea.Graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
             _headerPanel.Controls.Add(_titleLabel);
 
             // Nav links
-            _storiesButton = MakePill("STORIES (0)");
+            _storiesButton = MakePill("PRICING");
             _captureLink = MakeNav("CAPTURE");
             _rememberLink = MakeNav("REMEMBER");
             _discoverLink = MakeNav("DISCOVER");
@@ -201,15 +197,15 @@ namespace PreviousLives
             };
             Controls.Add(_pictureFrame);
 
-            _pbCaptured = new PictureBox
+            _pbEdited = new PictureBox
             {
                 Dock = DockStyle.Fill,
                 SizeMode = PictureBoxSizeMode.Zoom,
                 BackColor = Color.Black
             };
-            _pictureFrame.Controls.Add(_pbCaptured);
+            _pictureFrame.Controls.Add(_pbEdited);
 
-            // Description textbox (no scrollbar)
+            // Description textbox
             _tbDescription = new TextBox
             {
                 Multiline = true,
@@ -225,8 +221,8 @@ namespace PreviousLives
             };
             Controls.Add(_tbDescription);
 
-            // On Shown: size picture frame to image AR, and position textbox
-            Shown += (s, e) => {
+            Shown += (s, e) =>
+            {
                 int margin = 40;
                 int topY = _headerPanel.Bottom + margin / 2;
                 int descrY = Height - _footerPanel.Height - margin / 2 - _tbDescription.Height;
@@ -234,9 +230,9 @@ namespace PreviousLives
                 int maxH = descrY - topY;
                 int maxW = ClientSize.Width - margin * 2;
 
-                if (_pbCaptured.Image != null)
+                if (_pbEdited.Image != null)
                 {
-                    double ratio = (double)_pbCaptured.Image.Width / _pbCaptured.Image.Height;
+                    double ratio = (double)_pbEdited.Image.Width / _pbEdited.Image.Height;
                     int frameH = maxH;
                     int frameW = (int)(frameH * ratio);
                     if (frameW > maxW)
@@ -297,11 +293,9 @@ namespace PreviousLives
                 AutoSize = true,
                 BackColor = Color.Transparent
             };
-            _footerPanel.Controls.AddRange(new Control[]{
-                _footerCenterLabel, _footerRightLabel
-            });
+            _footerPanel.Controls.AddRange(new Control[] { _footerCenterLabel, _footerRightLabel });
 
-            void DoLayout()
+            void LayoutFooter()
             {
                 _footerDivider.SetBounds(0, 40, _footerPanel.ClientSize.Width, 1);
                 int y = 40 + (_footerCenterLabel.PreferredHeight / 2);
@@ -316,8 +310,8 @@ namespace PreviousLives
                     _footerPanel.ClientSize.Width - _footerRightLabel.PreferredWidth - _footerPanel.Padding.Right, y);
             }
 
-            _footerPanel.SizeChanged += (s, e) => DoLayout();
-            DoLayout();
+            _footerPanel.SizeChanged += (s, e) => LayoutFooter();
+            LayoutFooter();
         }
 
         private LinkLabel MakeFooterLink(string text) => new LinkLabel
