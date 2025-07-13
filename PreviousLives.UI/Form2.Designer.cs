@@ -1,4 +1,4 @@
-﻿namespace PreviousLives
+namespace PreviousLives
 {
     partial class Form2
     {
@@ -41,7 +41,6 @@
             this.Name = "Form2";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "Previous Lives";
-            this.Load += new System.EventHandler(this.Form2_Load_1);
             this.ResumeLayout(false);
 
         }
@@ -49,4 +48,5 @@
         #endregion
     }
 }
+
 
