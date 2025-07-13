@@ -25,7 +25,7 @@ A fun desktop application that captures a live webcam snapshot, generates a dram
 1. **Clone the repository**:
 
    ```bash
-   git clone https://github.com/your-username/PreviousLives.git
+   git clone https://github.com/Di-Boss/PreviousLives.git
    cd PreviousLives
    ```
 
