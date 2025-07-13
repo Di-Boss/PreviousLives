@@ -1,16 +1,15 @@
-﻿using AForge.Video;
+using AForge.Video;
 using AForge.Video.DirectShow;
 using Microsoft.Data.Sqlite;
 using OpenAI.GPT3;
 using OpenAI.GPT3.Managers;
-using OpenAI.GPT3.ObjectModels;
-using OpenAI.GPT3.ObjectModels.RequestModels;
-using OpenAI.GPT3.ObjectModels.ResponseModels;
 using PreviousLives.Data;
 using System;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace PreviousLives
@@ -37,7 +36,7 @@ namespace PreviousLives
         // your SQLite connection string
         private readonly string _connectionString;
 
-        // OpenAI service
+        // OpenAI service (unused in C# but retained)
         private readonly OpenAIService _openAi;
 
         // 25 Past-life professions
@@ -51,8 +50,7 @@ namespace PreviousLives
         };
         private readonly Random _rng = new Random();
 
-        public Form1(string connectionString)
-            : this()
+        public Form1(string connectionString) : this()
         {
             _connectionString = connectionString;
         }
@@ -64,9 +62,17 @@ namespace PreviousLives
             BuildWebcamPreview();
             BuildFooter();
 
+            // Initialize or migrate the database on startup
+            var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            // Ensure PreviousLives folder exists and initialize the DB
+            _connectionString = Database.Initialize(Path.Combine(localAppData, "PreviousLives"));
+
             var apiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY")
                          ?? throw new InvalidOperationException("Please set OPENAI_API_KEY");
             _openAi = new OpenAIService(new OpenAiOptions { ApiKey = apiKey });
+
+            // wire up capture
+            _btnCapture.Click += CaptureAndSave;
         }
 
         protected override void OnLoad(EventArgs e)
@@ -75,14 +81,19 @@ namespace PreviousLives
             InitializeWebcam();
         }
 
-        // ---------------------------------
-        //   Designer-generated component
-        // ---------------------------------
-
-
         // ------------------------
         //     BUILD HEADER
         // ------------------------
+        private void OpenUrl(string url)
+        {
+            // On .NET Framework and .NET Core 3.1+ you need UseShellExecute = true
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = url,
+                UseShellExecute = true
+            });
+        }
+
         private void BuildHeader()
         {
             BackColor = ColorTranslator.FromHtml("#121212");
@@ -95,7 +106,6 @@ namespace PreviousLives
             };
             Controls.Add(_headerPanel);
 
-            // logo
             var logo = new Panel
             {
                 Size = new Size(40, 40),
@@ -111,7 +121,6 @@ namespace PreviousLives
                 Image = Properties.Resources.hourglasslogo
             });
 
-            // title
             _titleLabel = new Label
             {
                 Text = "Previous Lives",
@@ -125,17 +134,22 @@ namespace PreviousLives
                 ea.Graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
             _headerPanel.Controls.Add(_titleLabel);
 
-            // nav links
-            _storiesButton = MakePill("STORIES (0)");
+            _storiesButton = MakePill("PRICING");
             _captureLink = MakeNav("CAPTURE");
             _rememberLink = MakeNav("REMEMBER");
             _discoverLink = MakeNav("DISCOVER");
-            _headerPanel.Controls.AddRange(new Control[]
-            {
+            _headerPanel.Controls.AddRange(new Control[] {
                 _storiesButton, _captureLink, _rememberLink, _discoverLink
             });
 
-            // divider
+
+            _storiesButton.Click += (s, e) => OpenUrl("https://google.com");
+            _captureLink.LinkClicked += (s, e) => OpenUrl("https://your.site/capture");
+            _rememberLink.LinkClicked += (s, e) => OpenUrl("https://your.site/remember");
+            _discoverLink.LinkClicked += (s, e) => OpenUrl("https://your.site/discover");
+
+
+
             _headerDivider = new Panel
             {
                 Dock = DockStyle.Bottom,
@@ -219,8 +233,7 @@ namespace PreviousLives
             _footerLeftFacebook = MakeFooterLink("Facebook");
             _footerLeftYouTube = MakeFooterLink("YouTube");
             _footerLeftInstagram = MakeFooterLink("Instagram");
-            _footerPanel.Controls.AddRange(new Control[]
-            {
+            _footerPanel.Controls.AddRange(new Control[] {
                 _footerLeftFacebook, _footerLeftYouTube, _footerLeftInstagram
             });
 
@@ -240,8 +253,7 @@ namespace PreviousLives
                 AutoSize = true,
                 BackColor = Color.Transparent
             };
-            _footerPanel.Controls.AddRange(new Control[]
-            {
+            _footerPanel.Controls.AddRange(new Control[] {
                 _footerCenterLabel, _footerRightLabel
             });
 
@@ -285,15 +297,14 @@ namespace PreviousLives
             {
                 BackColor = ColorTranslator.FromHtml("#FFB347"),
                 Padding = new Padding(2)
-                // note: no Dock = Fill
             };
             Controls.Add(previewContainer);
 
             _pbPreview = new PictureBox
             {
                 Dock = DockStyle.Fill,
-                SizeMode = PictureBoxSizeMode.StretchImage,
-                BackColor = Color.Black
+                BackColor = Color.Black,
+                SizeMode = PictureBoxSizeMode.StretchImage
             };
             previewContainer.Controls.Add(_pbPreview);
 
@@ -304,20 +315,19 @@ namespace PreviousLives
                 FlatStyle = FlatStyle.Flat,
                 BackColor = ColorTranslator.FromHtml("#FFB347"),
                 ForeColor = Color.White,
-                Cursor = Cursors.Hand,
-                FlatAppearance = { BorderSize = 2, BorderColor = Color.White }
+                Cursor = Cursors.Hand
             };
-            _btnCapture.Click += CaptureAndSave;
+            _btnCapture.FlatAppearance.BorderSize = 2;
+            _btnCapture.FlatAppearance.BorderColor = Color.White;
             Controls.Add(_btnCapture);
 
             Shown += (s, e) =>
             {
-                // your old 16:9 letterbox math:
                 const int side = 40, topSp = 30, footSp = 80;
-                int bottomM = side + footSp;
-                int topY = _headerPanel.Bottom + topSp;
-                int availH = ClientSize.Height - bottomM - topY - topSp;
-                int availW = ClientSize.Width - side * 2;
+                int bottomM = side + footSp,
+                    topY = _headerPanel.Bottom + topSp;
+                int availH = ClientSize.Height - bottomM - topY - topSp,
+                    availW = ClientSize.Width - side * 2;
                 int w = availW, h = w * 9 / 16;
                 if (h > availH) { h = availH; w = h * 16 / 9; }
 
@@ -332,63 +342,92 @@ namespace PreviousLives
         }
 
         // ------------------------
-        //  CAPTURE → AI → SAVE
+        //  CAPTURE → Python img2img → DB → Show Form2
         // ------------------------
         private async void CaptureAndSave(object sender, EventArgs e)
         {
-            if (_pbPreview.Image == null) return;
-
-            // 1) PNG bytes
-            byte[] blob;
-            using (var ms = new MemoryStream())
+            try
             {
-                _pbPreview.Image.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
-                blob = ms.ToArray();
+                // STEP 1
+                if (_pbPreview.Image == null)
+                {
+                    MessageBox.Show("No image in preview!", "Error");
+                    return;
+                }
+
+                // STEP 2: save the capture
+                var exeDir = Application.StartupPath;
+                var imagePath = Path.Combine(exeDir, "upload.png");
+                _pbPreview.Image.Save(imagePath, System.Drawing.Imaging.ImageFormat.Png);
+
+                // STEP 3: pick profession & age
+                var profession = Professions[_rng.Next(Professions.Length)];
+                var age = _rng.Next(20, 81);
+
+                // STEP 4: locate the Python script
+                var scriptPath = Path.Combine(exeDir, "img2img.py");
+                if (!File.Exists(scriptPath))
+                {
+                    MessageBox.Show($"Python script not found at:\n{scriptPath}", "Error");
+                    return;
+                }
+
+                // STEP 5: compute the same DB path used by Initialize
+                var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                var dbPath = Path.Combine(localAppData, "PreviousLives", "captures.db");
+
+                // STEP 6: launch Python against that DB
+                var psi = new ProcessStartInfo
+                {
+                    FileName = "python",
+                    Arguments =
+                        $"\"{scriptPath}\" --image \"{imagePath}\"" +
+                        $" --profession \"{profession}\" --age {age}" +
+                        $" --db \"{dbPath}\"",
+                    WorkingDirectory = exeDir,
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                };
+                using var proc = Process.Start(psi);
+
+                var stdout = await proc.StandardOutput.ReadToEndAsync();
+                var stderr = await proc.StandardError.ReadToEndAsync();
+                proc.WaitForExit();
+
+                if (!string.IsNullOrWhiteSpace(stderr))
+                {
+                    MessageBox.Show(stderr, "Python error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+
+                // STEP 7: parse ID
+                var successLine = stdout
+                    .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                    .FirstOrDefault(l => l.Contains("Saved capture"));
+                if (successLine == null)
+                {
+                    MessageBox.Show("No success line from Python.", "Error");
+                    return;
+                }
+
+                var parts = successLine.Split('#');
+                if (!long.TryParse(parts.Last().Trim(), out var newId))
+                {
+                    MessageBox.Show("Failed to parse new capture ID.", "Error");
+                    return;
+                }
+
+                // STEP 8: show Form2
+                var viewer = new Form2(_connectionString, newId);
+                viewer.Show();
+                Hide();
             }
-
-            // 2) random profession + age
-            var profession = Professions[_rng.Next(Professions.Length)];
-            var age = _rng.Next(20, 81);
-
-            // 3) build prompt
-            var prompt = $"""
-                Gender: male
-                Profession: {profession}
-                Age at death: {age}
-                Describe what your past life was like, and finish with an EPIC death scene.
-                """.Trim();
-
-            // 4) call ChatGPT
-            var chatReq = new ChatCompletionCreateRequest
+            catch (Exception ex)
             {
-                Model = Models.ChatGpt3_5Turbo,
-                Messages = new[] { new ChatMessage("user", prompt) }
-            };
-            var chatRes = await _openAi.ChatCompletion.CreateCompletion(chatReq);
-            var generated = chatRes.Choices.First().Message.Content.Trim();
-
-            // 5) save SQLite
-            long newId;
-            using (var conn = new SqliteConnection(_connectionString))
-            {
-                conn.Open();
-                using var cmd = conn.CreateCommand();
-                cmd.CommandText =
-                    "INSERT INTO Captures (Timestamp, ImageData, Description) VALUES ($ts, $img, $desc)";
-                cmd.Parameters.AddWithValue("$ts", DateTimeOffset.UtcNow.ToUnixTimeSeconds());
-                cmd.Parameters.Add("$img", SqliteType.Blob).Value = blob;
-                cmd.Parameters.AddWithValue("$desc", generated);
-                cmd.ExecuteNonQuery();
-
-                using var last = conn.CreateCommand();
-                last.CommandText = "SELECT last_insert_rowid()";
-                newId = (long)last.ExecuteScalar();
+                MessageBox.Show($"Exception: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
-
-            // 6) show Form2
-            var viewer = new Form2(_connectionString, newId);
-            viewer.Show();
-            Hide();
         }
 
         // ------------------------
@@ -399,7 +438,7 @@ namespace PreviousLives
             _videoDevices = new FilterInfoCollection(FilterCategory.VideoInputDevice);
             if (_videoDevices.Count == 0)
             {
-                MessageBox.Show("No webcam found.");
+                MessageBox.Show("No webcam found.", "Error");
                 return;
             }
             _webcam = new VideoCaptureDevice(_videoDevices[0].MonikerString);
@@ -423,3 +462,4 @@ namespace PreviousLives
         }
     }
 }
+
